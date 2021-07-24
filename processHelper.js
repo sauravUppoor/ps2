@@ -1,6 +1,7 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
 
+// current time stamp in MongoDB format
 const getTimeStamp = () => {
   let today = new Date();
   let dd = today.getDate();
@@ -27,32 +28,56 @@ const simulate = () => {
     else msg += "Failed";
     msg += ` ${getTimeStamp()}\n`;
     logger(msg);
-    console.log(`p1 terminated with exit code ${code} from ps2`);
+    console.log(`from simulate p1 function ${code} from server ps1`);
+  });
+  const p2 = spawn("python", ["./scripts/p2.py"]);
+  p2.on("exit", code => {
+    let msg = `${p2.pid} p2 `;
+    if (code === 0) msg += "Completed";
+    else if (code === 1) msg += "Stopped";
+    else msg += "Failed";
+    msg += ` ${getTimeStamp()}\n`;
+    logger(msg);
+    console.log(`from simulate p2 function ${code} from ps2`);
   });
 };
 
+// log status of completed/failed processes
 const logger = content => {
   fs.appendFile("./log.txt", content, err => {
     if (err) throw err;
   });
 };
 
-const startProcess = fName => {
-  const pythProcess = spawn("python", [fName]);
-  pythProcess.on("exit", code => {
-    let msg = `${pythProcess.pid} ${fName} `;
-    if (code === 0) msg += "Completed";
-    else if (code === 1) msg += "Stopped";
-    else msg += "Failed";
-    msg += ` ${getTimeStamp()}\n`;
-    logger(msg);
-  });
+const startProcess = (fName, extension) => {
+  if (extension === ".pl") {
+    const perlProcess = spawn("perl", [fName]);
+    perlProcess.on("exit", code => {
+      let msg = `${perlProcess.pid} ${fName} `;
+      if (code === 0) msg += "Completed";
+      else if (code === 1) msg += "Stopped";
+      else msg += "Failed";
+      msg += ` ${getTimeStamp()}\n`;
+      logger(msg);
+    });
+  } else {
+    const pythProcess = spawn("python", [fName]);
+    pythProcess.on("exit", code => {
+      let msg = `${pythProcess.pid} ${fName} `;
+      if (code === 0) msg += "Completed";
+      else if (code === 1) msg += "Stopped";
+      else msg += "Failed";
+      msg += ` ${getTimeStamp()}\n`;
+      logger(msg);
+    });
+  }
 };
 
 const stopProcess = serverID => {
   process.kill(serverID);
 };
 
+// current unix timestamp in MongoDB format
 const getUnixTime = time => {
   let finalTime = "";
   var today = new Date();
@@ -128,34 +153,45 @@ const winFormatOutput = output => {
     };
     runningProcesses.push(runningProcess);
   });
-
   return runningProcesses;
 };
 
+// Utility function to add process to list of processes
+const addProcessToListUnix = (extension, process) => {
+  let split = process.split(/\s+/);
+  const p = {
+    pid: split[1],
+    scriptType: extension === "py" ? "python" : "perl",
+    processName: split[split.length - 1].split("/")[2],
+    startTime: split[8],
+  };
+  return p;
+};
+
+// format output for unix ps command
 const unixFormatOutput = stdout => {
   let processList = stdout.split("/n");
   console.log(processList.length);
   let pythonProcesses = [];
+  let perlProcesses = [];
   processList.forEach(process => {
     if (process.substring(process.length - 3) === ".py") {
-      let split = process.split(/\s+/);
-      let p = {
-        pid: split[1],
-        scriptType: "python",
-        processName: split[split.length - 1].split("/")[2],
-        startTime: split[8],
-      };
-      pythonProcesses.push(p);
+      pythonProcesses.push(addProcessToListUnix(".py", process));
+    }
+    if (process.substring(process.length - 3) === ".pl") {
+      perlProcesses.push(addProcessToListUnix(".pl", process));
     }
   });
-  return pythonProcesses;
+  return pythonProcesses.concat(perlProcesses);
 };
 
+// server name utility
 const getServerName = async serverId => {
   const server = await server.findById(serverId);
   return server.serverName;
 };
 
+// process name utility
 const getProcessName = async processId => {
   const process = await process.findById(processId);
   return process.processName;

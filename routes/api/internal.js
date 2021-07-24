@@ -14,8 +14,10 @@ const {
 router.post("/start", (req, res) => {
   const processName = req.body.pname;
 
-  const fName = "./scripts/" + processName + ".py";
-  startProcess(fName);
+  const fName = "./scripts/" + processName;
+  const extension = processName.substring(processName.length - 3);
+  startProcess(fName, extension);
+  // check file exits
   res.status(200).send({ msg: "Process created successfully" });
 });
 
@@ -33,10 +35,9 @@ router.get("/status", (req, res) => {
   let completedProcesses = [];
   fs.readFile("./log.txt", "utf8", (err, data) => {
     if (err) {
-      res.send(404).send({ msg: "File not found" });
+      res.status(404).send({ msg: "File doesn't exist" });
     }
     lines = data.split("\n");
-    // console.log(lines);
     if (lines[0] !== "") {
       lines.forEach(line => {
         splits = line.trim().split(" ");
@@ -85,12 +86,11 @@ router.get("/status", (req, res) => {
     // handle unix
     let processList = [];
     let pythonProcesses = [];
+    let perlProcesses = [];
     exec("ps aux", (stderr, stdout) => {
-      if (stderr) {
-        res.status(500).send({ msg: "ps command failed" });
-      }
       processList = stdout.split("\n");
       processList.forEach(process => {
+        // Handling python processes
         if (process.substring(process.length - 3) === ".py") {
           let split = process.split(/\s+/);
           let pName = split[split.length - 1].split("/")[2];
@@ -105,13 +105,28 @@ router.get("/status", (req, res) => {
           };
           pythonProcesses.push(p);
         }
+        // Handling perl processes
+        if (process.substring(process.length - 3) === ".pl") {
+          let split = process.split(/\s+/);
+          let pName = split[split.length - 1].split("/")[2];
+          pName = pName.split(".")[0];
+          let p = {
+            pid: parseInt(split[1]),
+            scriptType: "perl",
+            processName: pName,
+            startTime: getUnixTime(split[8]),
+            endTime: "",
+            status: "In Progress",
+          };
+          perlProcesses.push(p);
+        }
       });
       fs.truncate("./log.txt", err => {
         if (err) {
           res.send(500).send({ msg: "Truncate file failed" });
         }
       });
-      runningProcesses = pythonProcesses;
+      runningProcesses = pythonProcesses.concat(perlProcesses);
       res.status(200).send(runningProcesses.concat(completedProcesses));
     });
   }
