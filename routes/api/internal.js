@@ -13,7 +13,7 @@ const {
 
 router.post("/start", (req, res) => {
   const processName = req.body.pname;
-
+  console.log(processName);
   const fName = "./scripts/" + processName;
   const extension = processName.substring(processName.length - 3);
   startProcess(fName, extension);
