@@ -1,0 +1,3 @@
+Name: TL-WA871ER
+IPv4 Address: 127.0.0.1
+Port: 5000
