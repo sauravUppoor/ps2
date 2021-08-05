@@ -113,7 +113,9 @@ const getUnixTime = time => {
   } else {
     let h = parseInt(hours);
   //  h += 12;
-    if (h == 24) newHours = "12";
+    if (parseInt(hours) < 10) hours = "0" + hours;
+    else if (parseInt(hours) === 12) hours = "00";
+    else if (h == 24) newHours = "12";
     else newHours = h.toString();
     hours = newHours;
   }
