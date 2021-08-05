@@ -120,6 +120,7 @@ const getUnixTime = time => {
     hours = newHours;
   }
   finalTime += hours + ":" + minutes + ":00Z";
+  console.log(finalTime);
   return finalTime;
 };
 
